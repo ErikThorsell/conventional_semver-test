@@ -69,11 +69,12 @@ jobs:
             new_tag=$(\
               conventional_semver --verbose \
               --semver ${{ steps.latest_tag.outputs.tag }} \
-              <<"EOF"
+              "$(cat <<'EOF'
           ${{ steps.pr_message.outputs.pr_title }}
               
           ${{ steps.pr_message.outputs.pr_body }}
           EOF
+          )"
           )
           else
             new_tag=$(conventional_semver --verbose \
