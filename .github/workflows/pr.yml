@@ -1,0 +1,95 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+
+      # We need to get ahold of all tags
+      # which is why we fetch the entire history.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      ### CONVENTIONAL SEMVER SPECIFIC
+      # If we want to automatically version every commit on main, we need
+      # to make sure we only merge _one commit at the time_.
+      # This can be accomplished by either putting a check in your pipeline,
+      # which fails the PR if the number of commits on the branch are more than 1,
+      # or we can demand that all PRs are squashed.
+      #
+      # In the below example, I'm assuming all PRs are squashed (this can be
+      # ensured in the Settings).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Conventional Semver
+        run: pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple conventional_semver
+
+      # The title and body of the PR will be used as commit message if the PR is merged
+      # so these are the parts that we are interested in checking.
+      - name: Get PR message
+        id: pr_message
+        run: |
+          PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+          PR_DETAILS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER")
+          PR_TITLE=$(echo "$PR_DETAILS" | jq --raw-output .title)
+          PR_BODY=$(echo "$PR_DETAILS" | jq --raw-output .body)
+
+          echo "::set-output name=pr_title::${PR_TITLE}"
+          echo "::set-output name=pr_body::${PR_BODY}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # In order to calculate what the new version would be if the PR is merged
+      # we need to get the latest tag on the target branch
+      - name: Get latest tag on target branch
+        id: latest_tag
+        run: |
+          TARGET_BRANCH=${{ github.event.pull_request.base.ref }}
+          LATEST_TAG=$(git describe --abbrev=0 --tags `git rev-list --tags --max-count=1 --first-parent --merged $TARGET_BRANCH`)
+          echo "Latest tag on the $TARGET_BRANCH branch is $LATEST_TAG"
+          echo "::set-output name=tag::$LATEST_TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # When creating a PR in GitHub the description is optional.
+      # If you don't put a description, the JSON response will contain "null" so
+      # we need to do a little dance here to make sure we don't send "null" into
+      # the tool.
+      - name: Get next version
+        run: |
+          if [ "${{ steps.pr_message.outputs.pr_body }}" != "null" ]; then
+            new_tag=$(\
+              conventional_semver --verbose \
+              --semver ${{ steps.latest_tag.outputs.tag }} \
+              <<"EOF"
+          ${{ steps.pr_message.outputs.pr_title }}
+              
+          ${{ steps.pr_message.outputs.pr_body }}
+          EOF
+          )
+          else
+            new_tag=$(conventional_semver --verbose \
+              --semver ${{ steps.latest_tag.outputs.tag }} \
+              "${{ steps.pr_message.outputs.pr_title }}"
+            )
+          fi
+          echo "Should this PR be merged right now, the new version would be: $new_tag"
+      ###
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore project
+        run: dotnet restore
+      
+      - name: Build and Test project
+        run: dotnet test

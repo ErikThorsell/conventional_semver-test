@@ -1,0 +1,94 @@
+name: MAIN
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+
+      # We need to get ahold of all tags
+      # which is why we fetch the entire history.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      ### CONVENTIONAL SEMVER SPECIFIC
+      # In pr.yml we fetched the PR Title and PR Body using the GitHub API.
+      # When this workflow is triggered, we know that we're on main and therefore
+      # we can mostly use git to get the information we need.
+      # Note that pr.yml made the assumption that the merged PR only added one
+      # commit to main.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install Conventional Semver
+        run: |
+          set -xeuo pipefail
+          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple conventional_semver
+
+      - name: Get latest commit message
+        id: commit_message
+        run: |
+          set -xeuo pipefail
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B | tr -d '')
+          COMMIT_HASH=$(git log -1 --pretty=%H | tr -d '' )
+          echo "Commit message for commit with hash $COMMIT_HASH printed below:"
+          echo "$COMMIT_MESSAGE"
+          echo "::set-output name=commit_message::${COMMIT_MESSAGE}"
+          echo "::set-output name=commit_hash::${COMMIT_HASH}"
+
+      - name: Get latest tag on main
+        id: latest_tag
+        run: |
+          set -xeuo pipefail
+          LATEST_TAG=$(git describe --abbrev=0 --tags)
+          echo "Latest tag on main branch is $LATEST_TAG"
+          echo "::set-output name=tag::$LATEST_TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # First: https://docs.github.com/en/rest/git/tags?apiVersion=2022-11-28#create-a-tag-object
+      # Then: https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#create-a-reference
+      # Make sure GitHub Actions have read/write permissions (in Settings > Actions)
+      # or the curl commands will fail with error: "Resource not accessible by integration"
+      - name: Tag branch
+        run: |
+          set -xeuo pipefail
+          TAG=$(conventional_semver --verbose \
+            --semver ${{ steps.latest_tag.outputs.tag }} \
+            "${{ steps.commit_message.outputs.commit_message }}"
+          )
+
+          echo "Pushing tag $TAG to repo $GITHUB_REPOSITORY"
+
+          curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/git/tags \
+            -d "{\"tag\":\"$TAG\",\"message\":\"$TAG\",\"object\":\"${{ steps.commit_message.outputs.commit_hash }}\",\"type\":\"commit\",\"tagger\":{\"name\":\"${{ github.event.pusher.name }}\",\"email\":\"${{ github.event.pusher.email }}\"}}"
+          
+          curl -L \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/git/refs \
+            -d "{\"ref\":\"refs/tags/$TAG\",\"sha\":\"${{ steps.commit_message.outputs.commit_hash }}\"}"
+
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ###
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore project
+        run: dotnet restore
+      
+      - name: Build and Test project
+        run: dotnet test
