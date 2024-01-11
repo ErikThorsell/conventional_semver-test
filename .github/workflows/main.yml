@@ -26,9 +26,7 @@ jobs:
           python-version: '3.12'
       
       - name: Install Conventional Semver
-        run: |
-          set -xeuo pipefail
-          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple conventional_semver
+        run: pip install conventional_semver
 
       - name: Get latest commit message
         id: commit_message

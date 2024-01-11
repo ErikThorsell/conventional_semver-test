@@ -29,7 +29,7 @@ jobs:
           python-version: '3.12'
       
       - name: Install Conventional Semver
-        run: pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple conventional_semver
+        run: pip install conventional_semver
 
       # The title and body of the PR will be used as commit message if the PR is merged
       # so these are the parts that we are interested in checking.
