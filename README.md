@@ -36,6 +36,34 @@ versioning _any_ project which utilises SemVer and Conventional Commits, why
 I have chosen to create a dotnet sample project even though I know very little
 about dotnet and C#.
 
+## In Action!
+
+The logs below show the [`Get next version`](https://github.com/ErikThorsell/conventional_semver-test/blob/main/.github/workflows/pr.yml#L66)
+step validating the commit message and computing the next tag according to the 
+CC-type:
+
+```
+2024-01-11 07:25:47.590 | INFO     | conventional_semver.conventional_semver:main:123 - Message:
+test: add test for non-primes larger than 10
+2024-01-11 07:25:47.594 | INFO     | conventional_semver.validate:parse:49 - Message was successfully parsed!
+2024-01-11 07:25:47.594 | DEBUG    | conventional_semver.validate:parse:51 - Type: test
+2024-01-11 07:25:47.594 | DEBUG    | conventional_semver.validate:parse:52 - Has breaking !: False
+2024-01-11 07:25:47.594 | DEBUG    | conventional_semver.validate:parse:53 - Has breaking token: 
+2024-01-11 07:25:47.594 | DEBUG    | conventional_semver.validate:parse:54 - Scope: 
+2024-01-11 07:25:47.595 | DEBUG    | conventional_semver.validate:parse:55 - Description: add test for non-primes larger than 10
+2024-01-11 07:25:47.595 | DEBUG    | conventional_semver.validate:parse:56 - Body: []
+2024-01-11 07:25:47.595 | DEBUG    | conventional_semver.validate:parse:57 - Footers: []
+2024-01-11 07:25:47.595 | DEBUG    | conventional_semver.conventional_semver:main:139 - Latest Semantic Version was provided as an argument: 0.0.1
+2024-01-11 07:25:47.595 | INFO     | conventional_semver.calculate:calculate_new_version:55 - Incrementing the PATCH version.
+2024-01-11 07:25:47.595 | INFO     | conventional_semver.conventional_semver:main:167 - New version: 0.0.2
+Should this PR be merged right now, the new version would be: 0.0.2
+```
+
+Since the commit message was valid -- and the rest of the pipeline was
+successful -- I went ahead and merged the PR.
+This resulted in the [`main`-pipeline](https://github.com/ErikThorsell/conventional_semver-test/blob/main/.github/workflows/main.yml)
+executing and a new tag (`0.0.2`) being associated to the new commit.
+
 ## Notes
 
 Make sure you have a `config.toml` file in your repo root, or pass a path to
