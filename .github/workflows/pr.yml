@@ -22,8 +22,13 @@ jobs:
       # which fails the PR if the number of commits on the branch are more than 1,
       # or we can demand that all PRs are squashed.
       #
-      # In the below example, I'm assuming all PRs are squashed (this can be
-      # ensured in the Settings).
+      # This workflow works in both cases, because we look at the Pull Request
+      # title and description.
+      # Note that it _is_ possible to modify the final commit message at "merge
+      # time" (i.e. when you press the big green button in the GitHub UI), which
+      # I think is bonkers and should at least be possible to disable.....
+      # It's crucial that all developers understands this, as an erroneous edit
+      # will mean that the build will fail in main.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -31,8 +36,6 @@ jobs:
       - name: Install Conventional Semver
         run: pip install conventional_semver
 
-      # The title and body of the PR will be used as commit message if the PR is merged
-      # so these are the parts that we are interested in checking.
       - name: Get PR message
         id: pr_message
         run: |
@@ -47,8 +50,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # In order to calculate what the new version would be if the PR is merged
-      # we need to get the latest tag on the target branch
       - name: Get latest tag on target branch
         id: latest_tag
         run: |
@@ -56,8 +57,6 @@ jobs:
           LATEST_TAG=$(git describe --abbrev=0 --tags `git rev-list --tags --max-count=1 --first-parent --merged $TARGET_BRANCH`)
           echo "Latest tag on the $TARGET_BRANCH branch is $LATEST_TAG"
           echo "::set-output name=tag::$LATEST_TAG"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # When creating a PR in GitHub the description is optional.
       # If you don't put a description, the JSON response will contain "null" so
