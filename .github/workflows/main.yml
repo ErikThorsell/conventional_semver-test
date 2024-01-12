@@ -28,6 +28,25 @@ jobs:
       - name: Install Conventional Semver
         run: pip install conventional_semver
 
+      - name: Get latest commit message
+        id: commit_message
+        run: |
+          set -xeuo pipefail
+          COMMIT_MESSAGE=$(git log -1 --pretty=%B | tr -d '')
+          COMMIT_HASH=$(git log -1 --pretty=%H | tr -d '' )
+          echo "Commit message for commit with hash $COMMIT_HASH printed below:"
+          echo "$COMMIT_MESSAGE"
+          echo "::set-output name=commit_message::${COMMIT_MESSAGE}"
+          echo "::set-output name=commit_hash::${COMMIT_HASH}"
+
+      - name: Get latest tag on main
+        id: latest_tag
+        run: |
+          set -xeuo pipefail
+          LATEST_TAG=$(git describe --abbrev=0 --tags)
+          echo "Latest tag on main branch is $LATEST_TAG"
+          echo "::set-output name=tag::$LATEST_TAG"
+
       # Tag immediately!
       #
       # As soon as a new commit appears on main, it must be tagged.
@@ -49,8 +68,9 @@ jobs:
         run: |
           set -xeuo pipefail
           TAG=$(conventional_semver --verbose \
-            --semver $(git describe --abbrev=0 --tags) \
-            "$(git log -1 --pretty=%B | tr -d '')")
+            --semver ${{ steps.latest_tag.outputs.tag }} \
+            '${{ steps.commit_message.outputs.commit_message }}'
+          )
 
           echo "Pushing tag $TAG to repo $GITHUB_REPOSITORY"
 
