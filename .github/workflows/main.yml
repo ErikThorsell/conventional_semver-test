@@ -18,9 +18,9 @@ jobs:
       ### CONVENTIONAL SEMVER SPECIFIC
       # In pr.yml we fetched the PR Title and PR Body using the GitHub API.
       # When this workflow is triggered, we know that we're on main and therefore
-      # we can mostly use git to get the information we need.
-      # Note that pr.yml made the assumption that the merged PR only added one
-      # commit to main.
+      # we can use git to get the information we need.
+      # Note that we always -- only -- consider one commit at the time,
+      # which is why your PR must always result in _one new commit_ on main.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -46,14 +46,25 @@ jobs:
           LATEST_TAG=$(git describe --abbrev=0 --tags)
           echo "Latest tag on main branch is $LATEST_TAG"
           echo "::set-output name=tag::$LATEST_TAG"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Tag immediately!
+      #
+      # As soon as a new commit appears on main, it must be tagged.
+      # Even if the build fails, or something else happens which means this
+      # commit is no longer of interest, we still want to have a 1:1 mapping
+      # between "commit" and "version".
+      #
+      # I like the "build your binaries only once"-workflow, where each commit
+      # results in a unique binary/deliverable (which gets a unique version)
+      # and then you keep track of the version's "maturity" to indicate whether
+      # this particular version is good enough for production.
+      #
+      # Tag using GitHub's API:
       # First: https://docs.github.com/en/rest/git/tags?apiVersion=2022-11-28#create-a-tag-object
       # Then: https://docs.github.com/en/rest/git/refs?apiVersion=2022-11-28#create-a-reference
       # Make sure GitHub Actions have read/write permissions (in Settings > Actions)
       # or the curl commands will fail with error: "Resource not accessible by integration"
-      - name: Tag branch
+      - name: Tag latest commit using Conventional Semver
         run: |
           set -xeuo pipefail
           TAG=$(conventional_semver --verbose \
