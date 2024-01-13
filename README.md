@@ -38,7 +38,8 @@ about dotnet and C#.
 
 ## In Action!
 
-The logs below show the [`Get next version`](https://github.com/ErikThorsell/conventional_semver-test/blob/main/.github/workflows/pr.yml#L66)
+The logs below show the [`Get next
+version`](https://github.com/ErikThorsell/conventional_semver-test/blob/main/.github/workflows/pr.yml#L66)
 step validating the commit message and computing the next tag according to the 
 CC-type:
 
@@ -61,7 +62,8 @@ Should this PR be merged right now, the new version would be: 0.0.2
 
 Since the commit message was valid -- and the rest of the pipeline was
 successful -- I went ahead and merged the PR.
-This resulted in the [`main`-pipeline](https://github.com/ErikThorsell/conventional_semver-test/blob/main/.github/workflows/main.yml)
+This resulted in the
+[`main`-pipeline](https://github.com/ErikThorsell/conventional_semver-test/blob/main/.github/workflows/main.yml)
 executing and a new tag (`0.0.2`) being associated to the new commit.
 
 ## Notes
